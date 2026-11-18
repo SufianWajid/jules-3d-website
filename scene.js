@@ -15,8 +15,8 @@ const part = (name, geo, material, pos = [0, 0, 0], rot = [0, 0, 0], scale = [1,
 const extra = (...a) => { const m = part(...a); m.scale.multiplyScalar(HIDE); return m; };
 const tube = (pts, r = 0.028, closed = false) => new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts.map(p => new THREE.Vector3(...p)), closed), 160, r, 10, closed);
 
-// ---------- measurements, taken off frames of the video (units; the bare body is 2.1 wide and 3.82 tall, 1 : 1.82) ----------
-const R = 1.05, BOTTOM = -1.67, TOP = 2.15, SHOULDER = TOP - R;      // body radius, base, crown, where the dome starts
+// ---------- measurements, taken off frames of the video (units; the bare body is 2.1 wide and 3.55 tall, 1 : 1.69) ----------
+const R = 1.05, BOTTOM = -1.4, TOP = 2.15, SHOULDER = TOP - R;      // body radius, base, crown, where the dome starts
 const RS = R + 0.06, SB = BOTTOM + 0.02;                            // sleeve radius and its lower edge: it stops at the base, never below it
 const SL = SHOULDER - SB, ARC = SL + RS * PI / 2;                    // sleeve: straight length, then the dome's arc
 // A point on the sleeve from (a = distance round from the front, s = distance up from its lower edge).
@@ -33,7 +33,7 @@ const onFace = (x, y, lift = 0.02) => [x, y, Math.sqrt(R * R - x * x) + lift];
 
 // Openings in the sleeve, in the same (a, s) units: a pill has centre a, half width w, and runs from s0 to s1.
 const BACK = RS * PI;
-const OPEN = { back: { a: BACK, w: 0.45, s0: 0.72, s1: SL - 0.04 } };
+const OPEN = { back: { a: BACK, w: 0.45, s0: 0.5, s1: SL - 0.04 } };
 const HOLE = { a: RS * PI / 2, s: SL - 0.1, r: 0.17 };              // the side button's hole, on the device's left
 const pillPath = (o, k = 30) => {
   const rb = o.rb ?? o.w, c1 = o.s1 - o.w, c0 = o.s0 + rb, pts = [], at = (a, s) => pts.push([o.a + a, s]), f = i => i / k;
@@ -49,7 +49,7 @@ const pillPath = (o, k = 30) => {
 // ---------- the sleeve: a surface of revolution with the openings cut by an alpha mask ----------
 // The face opening is drawn as it looks from the front, then laid onto the sleeve: an arch that follows the
 // curve of the head with a thin rim above it, straight sides, and a wide U underneath.
-const FACE_OPEN = { x: 0.94, rim: 0.08, bottom: 0.74, u: 0.68 };     // half width, rim over the crown, height of the lower edge, depth of the U
+const FACE_OPEN = { x: 0.94, rim: 0.27, bottom: 0.47, u: 0.68 };     // half width, rim over the crown, height of the lower edge, depth of the U
 const fromFront = (x, y) => {                                         // front-view point -> (a, s) on the sleeve
   if (y <= SHOULDER) return [Math.asin(x / RS) * RS, y - SB];
   const ph = Math.asin(Math.min(1, (y - SHOULDER) / RS));
@@ -123,13 +123,20 @@ body.add(
 );
 
 // ---------- the foot: a stem that plugs into the base and a flat sole with two toes ----------
-const puck = r => new THREE.ExtrudeGeometry(new THREE.Shape().absarc(0, 0, r, 0, PI * 2), { depth: 0.05, bevelEnabled: true, bevelSize: 0.035, bevelThickness: 0.035, bevelSegments: 6, curveSegments: 48 }).center().rotateX(FACE);
+// The sole is one piece with two feet: a round plate about as wide as the body, with a single notch at the front.
+const sole = () => {
+  const pts = [...Array(120)].map((_, i) => {
+    const th = i / 120 * PI * 2, d = Math.atan2(Math.sin(th), Math.cos(th));                   // angle from the front, -PI..PI
+    const r = 1.0 * (1 - 0.42 * Math.exp(-((d / 0.34) ** 2))) + 0.1 * Math.exp(-(((Math.abs(d) - 0.62) / 0.42) ** 2));
+    return new THREE.Vector2(r * Math.sin(th), r * Math.cos(th) * 0.9);
+  });
+  return new THREE.ExtrudeGeometry(new THREE.Shape(pts), { depth: 0.05, bevelEnabled: true, bevelSize: 0.035, bevelThickness: 0.035, bevelSegments: 6 }).translate(0, 0, -0.025).rotateX(FACE);
+};
 const footMat = toy(C.orange, SOFT);
-const foot = part('foot', puck(0.88), footMat, [0, BOTTOM - 0.4, -0.12]);
+const foot = part('foot', sole(), footMat, [0, BOTTOM - 0.4, 0]);
 foot.add(
-  ...[-0.95, 0, 0.95].map(a => part('', puck(0.45), footMat, [0.72 * Math.sin(a), 0, 0.66 * Math.cos(a)])),   // three toes
-  part('', new THREE.CylinderGeometry(0.36, 0.44, 0.36, 40), footMat, [0, 0.22, 0.12]),   // a thick, short stem
-  part('', new THREE.CylinderGeometry(0.12, 0.18, 0.3, 24), footMat, [0, 0.52, 0.12]),
+  part('', new THREE.CylinderGeometry(0.36, 0.44, 0.36, 40), footMat, [0, 0.22, 0]),   // a thick, short stem
+  part('', new THREE.CylinderGeometry(0.12, 0.18, 0.3, 24), footMat, [0, 0.52, 0]),
 );
 
 // ---------- inside: a stylised illustration in general groups, deliberately not the real board ----------
@@ -144,7 +151,7 @@ const inside = [
   frame, board, leds,
   part('in-strip', new THREE.BoxGeometry(0.2, 2.2, 0.03), toy(0x0c4f3f), [0, 0.15, 0.1]),
   part('in-battery', new THREE.CylinderGeometry(0.3, 0.3, 1.25, 32), toy(C.blue), [0, -0.95, 0.15], [0, 0, FACE]),
-  part('in-driver', new THREE.CylinderGeometry(0.72, 0.55, 0.3, 48), toy(0x1d1e21, { roughness: 0.35 }), [0, -1.42, 0]),
+  part('in-driver', new THREE.CylinderGeometry(0.72, 0.55, 0.3, 48), toy(0x1d1e21, { roughness: 0.35 }), [0, -1.18, 0]),
 ];
 
 const TILES = [C.green, C.yellow, C.blue, C.white, C.purple, C.green, C.yellow, C.blue];
