@@ -5,7 +5,7 @@ import { createStage, THREE, HIDE } from './engine.js';
 import { RoundedBoxGeometry } from './vendor/RoundedBoxGeometry.js';
 
 // Colours from julesstories.com.
-const C = { orange: 0xff560d, lilac: 0xd7b7e0, green: 0x00735a, yellow: 0xffbf1a, blue: 0x3f81c5, purple: 0x8729ff, white: 0xffffff, ink: 0x141416, key: 0x8d9194, panel: 0xe4e5e8 };
+const C = { orange: 0xff560d, lilac: 0xd7b7e0, green: 0x00735a, yellow: 0xffbf1a, blue: 0x3f81c5, purple: 0x8729ff, white: 0xffffff, ink: 0x141416, key: 0x7f8386, panel: 0xe4e5e8 };
 const SHOW = 1 / HIDE;      // extras rest at scale HIDE; a form shows one with s: SHOW
 const PI = Math.PI, FACE = PI / 2;
 const toy = (color, extra = {}) => new THREE.MeshPhysicalMaterial({ color, metalness: 0, roughness: 0.5, clearcoat: 0.25, clearcoatRoughness: 0.4, envMapIntensity: 0.9, ...extra });
@@ -15,12 +15,12 @@ const part = (name, geo, material, pos = [0, 0, 0], rot = [0, 0, 0], scale = [1,
 const extra = (...a) => { const m = part(...a); m.scale.multiplyScalar(HIDE); return m; };
 const tube = (pts, r = 0.028, closed = false) => new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts.map(p => new THREE.Vector3(...p)), closed), 160, r, 10, closed);
 
-// ---------- measurements, taken off frames of the video (units; the body is 2.1 wide and 4.0 tall, 1 : 1.9) ----------
-const R = 1.05, BOTTOM = -1.8, TOP = 2.2, SHOULDER = TOP - R;      // body radius, base, crown, where the dome starts
-const RS = R + 0.06, SB = BOTTOM + 0.04;                            // sleeve radius and its lower edge: it stops at the base, never below it
+// ---------- measurements, taken off frames of the video (units; the bare body is 2.1 wide and 3.82 tall, 1 : 1.82) ----------
+const R = 1.05, BOTTOM = -1.67, TOP = 2.15, SHOULDER = TOP - R;      // body radius, base, crown, where the dome starts
+const RS = R + 0.06, SB = BOTTOM + 0.02;                            // sleeve radius and its lower edge: it stops at the base, never below it
 const SL = SHOULDER - SB, ARC = SL + RS * PI / 2;                    // sleeve: straight length, then the dome's arc
 // A point on the sleeve from (a = distance round from the front, s = distance up from its lower edge).
-const SKIRT = 0.07, SKIRT_H = 1.7;                                    // the sleeve flares out a little towards its lower edge
+const SKIRT = 0.05, SKIRT_H = 1.5;                                    // the sleeve flares out a little towards its lower edge
 const onSleeve = (a, s, lift = 0) => {
   const th = a / RS; let r = RS + lift;
   if (s < SKIRT_H) r += SKIRT * (1 - s / SKIRT_H) ** 2;
@@ -33,15 +33,19 @@ const onFace = (x, y, lift = 0.02) => [x, y, Math.sqrt(R * R - x * x) + lift];
 
 // Openings in the sleeve, in the same (a, s) units: a pill has centre a, half width w, and runs from s0 to s1.
 const BACK = RS * PI;
-const OPEN = { face: { a: 0, w: 1.15, s0: 0.9, s1: SL + 1.27 }, back: { a: BACK, w: 0.43, s0: 0.66, s1: SL + 0.12 } };
-const HOLE = { a: RS * PI / 2, s: SL - 0.2, r: 0.2 };              // the side button's hole, on the device's left
-const pillPath = (o, n = 120) => [...Array(n)].map((_, i) => {
-  const t = i / n * 4, c0 = o.s0 + o.w, c1 = o.s1 - o.w;          // four quarters: right side up, top arc, left side down, bottom arc
-  if (t < 1) return [o.a + o.w, c0 + (c1 - c0) * t];
-  if (t < 2) return [o.a + o.w * Math.cos((t - 1) * PI), c1 + o.w * Math.sin((t - 1) * PI)];
-  if (t < 3) return [o.a - o.w, c1 - (c1 - c0) * (t - 2)];
-  return [o.a - o.w * Math.cos((t - 3) * PI), c0 - o.w * Math.sin((t - 3) * PI)];
-});
+// rb is the radius of the two lower corners (the face opening has a wide, flat-bottomed U; the back one is a full pill).
+const OPEN = { face: { a: 0, w: 1.12, s0: 0.74, s1: SL + 1.35, rb: 0.7 }, back: { a: BACK, w: 0.45, s0: 0.72, s1: SL - 0.04 } };
+const HOLE = { a: RS * PI / 2, s: SL - 0.1, r: 0.17 };              // the side button's hole, on the device's left
+const pillPath = (o, k = 30) => {
+  const rb = o.rb ?? o.w, c1 = o.s1 - o.w, c0 = o.s0 + rb, pts = [], at = (a, s) => pts.push([o.a + a, s]), f = i => i / k;
+  for (let i = 0; i < k; i++) at(o.w, c0 + (c1 - c0) * f(i));                                                    // right side, going up
+  for (let i = 0; i < k * 2; i++) at(o.w * Math.cos(f(i) * FACE), c1 + o.w * Math.sin(f(i) * FACE));              // top arch
+  for (let i = 0; i < k; i++) at(-o.w, c1 - (c1 - c0) * f(i));                                                   // left side, going down
+  for (let i = 0; i < k; i++) at(-o.w + rb - rb * Math.cos(f(i) * FACE), c0 - rb * Math.sin(f(i) * FACE));        // lower left corner
+  for (let i = 0; i < k; i++) at(-o.w + rb + (2 * o.w - 2 * rb) * f(i), o.s0);                                   // flat bottom
+  for (let i = 0; i < k; i++) at(o.w - rb + rb * Math.sin(f(i) * FACE), c0 - rb * Math.cos(f(i) * FACE));         // lower right corner
+  return pts;
+};
 
 // ---------- the sleeve: a surface of revolution with the openings cut by an alpha mask ----------
 const sleeveMask = () => {
@@ -69,8 +73,9 @@ sleeve.add(
   new THREE.Mesh(tube(pillPath(OPEN.face).map(([a, s]) => onSleeve(a, s)), 0.05, true), lipMat),
   new THREE.Mesh(tube(pillPath(OPEN.back).map(([a, s]) => onSleeve(a, s)), 0.04, true), lipMat),
   new THREE.Mesh(tube([...Array(40)].map((_, i) => onSleeve(HOLE.a + HOLE.r * Math.cos(i / 40 * PI * 2), HOLE.s + HOLE.r * Math.sin(i / 40 * PI * 2))), 0.03, true), lipMat),
-  part('', new THREE.TorusGeometry(RS + SKIRT, 0.035, 16, 120), lipMat, [0, SB + 0.035, 0], [FACE, 0, 0]),
-  ...[1, -1].map(side => new THREE.Mesh(tube([0, 1, 2, 3].map(i => onSleeve(side * HOLE.a, 1.3 + i * 0.2, 0.01)), 0.045), lipMat)),
+  new THREE.Mesh(tube([...Array(40)].map((_, i) => onSleeve(-HOLE.a + HOLE.r * Math.cos(i / 40 * PI * 2), HOLE.s + HOLE.r * Math.sin(i / 40 * PI * 2))), 0.03, true), lipMat),
+  part('', new THREE.TorusGeometry(RS + SKIRT, 0.04, 16, 120), lipMat, [0, SB + 0.04, 0], [FACE, 0, 0]),
+  ...[1, -1].map(side => new THREE.Mesh(tube([0, 1, 2, 3].map(i => onSleeve(side * HOLE.a, 0.6 + i * 0.3, 0.015)), 0.05), lipMat)),
 );
 
 // ---------- the white body: turned from a profile, with a socket in the base for the foot ----------
@@ -86,30 +91,30 @@ const body = part('body', new THREE.LatheGeometry(bodyProfile.map(p => new THREE
 body.add(
   part('', new THREE.RingGeometry(0.2, R - 0.14, 64), toy(C.white, { map: grilleMap(), side: THREE.DoubleSide }), [0, BOTTOM + 0.005, 0], [FACE, 0, 0]),   // speaker grille
   part('', new THREE.CylinderGeometry(0.2, 0.2, 0.3, 24, 1, true), toy(0x9a9da0, { side: THREE.DoubleSide }), [0, BOTTOM + 0.15, 0]),                       // foot socket
-  part('', new THREE.TorusGeometry(R + 0.001, 0.007, 8, 120), toy(0xc9cbce), [0, BOTTOM + 0.72, 0], [FACE, 0, 0]),                                          // the seam above the base
-  part('', new THREE.SphereGeometry(0.022, 12, 8), toy(C.ink), [-R, 0.6, 0]),                                                                              // microphone
+  part('', new THREE.TorusGeometry(R + 0.001, 0.007, 8, 120), toy(0xc9cbce), [0, BOTTOM + 0.62, 0], [FACE, 0, 0]),                                          // the seam above the base
+  part('', new THREE.SphereGeometry(0.022, 12, 8), toy(C.ink), [-R, BOTTOM + 2.65, 0]),                                                                              // microphone
 );
 // Back controls: a recessed panel with three keys and the charging port.
-const PY = 0.1, KZ = -(R - 0.045);
+const PY = 0.06, KZ = -(R - 0.045);
 const pillShape = (w, h) => { const r = w / 2, y = h / 2 - r, s = new THREE.Shape(); s.moveTo(-r, -y); s.lineTo(-r, y); s.absarc(0, y, r, PI, 0, true); s.lineTo(r, -y); s.absarc(0, -y, r, 0, PI, true); return s; };
 const slab = (w, h, depth, bevel) => new THREE.ExtrudeGeometry(pillShape(w, h), { depth, bevelEnabled: true, bevelSize: bevel, bevelThickness: bevel, bevelSegments: 4, curveSegments: 32 }).center();
 const keyMat = toy(C.key, { roughness: 0.7 });
 body.add(
-  part('', slab(0.75, 2.28, 0.05, 0.02), toy(C.panel, { roughness: 0.35 }), [0, PY, -(R - 0.06)]),
-  part('', slab(0.44, 0.44, 0.05, 0.02), keyMat, [0, PY + 0.76, KZ - 0.03]),
-  part('', slab(0.44, 0.82, 0.05, 0.02), keyMat, [0, PY + 0.1, KZ - 0.03]),
-  part('', slab(0.07, 0.24, 0.03, 0.005), toy(C.ink), [0, PY - 0.42, KZ - 0.02], [0, 0, FACE]),
-  part('', slab(0.44, 0.44, 0.05, 0.02), keyMat, [0, PY - 0.78, KZ - 0.03]),
+  part('', slab(0.78, 1.86, 0.05, 0.02), toy(C.panel, { roughness: 0.35 }), [0, PY, -(R - 0.06)]),
+  part('', slab(0.38, 0.38, 0.05, 0.02), keyMat, [0, PY + 0.62, KZ - 0.03]),
+  part('', slab(0.38, 0.66, 0.05, 0.02), keyMat, [0, PY + 0.06, KZ - 0.03]),
+  part('', slab(0.07, 0.24, 0.03, 0.005), toy(C.ink), [0, PY - 0.37, KZ - 0.02], [0, 0, FACE]),
+  part('', slab(0.38, 0.38, 0.05, 0.02), keyMat, [0, PY - 0.64, KZ - 0.03]),
 );
 
 // ---------- the foot: a stem that plugs into the base and a flat sole with two toes ----------
 const puck = r => new THREE.ExtrudeGeometry(new THREE.Shape().absarc(0, 0, r, 0, PI * 2), { depth: 0.05, bevelEnabled: true, bevelSize: 0.035, bevelThickness: 0.035, bevelSegments: 6, curveSegments: 48 }).center().rotateX(FACE);
 const footMat = toy(C.orange, SOFT);
-const foot = part('foot', puck(0.8), footMat, [0, BOTTOM - 0.36, -0.12]);
+const foot = part('foot', puck(0.88), footMat, [0, BOTTOM - 0.4, -0.12]);
 foot.add(
-  ...[-0.9, 0, 0.9].map(a => part('', puck(0.42), footMat, [0.64 * Math.sin(a), 0, 0.64 * Math.cos(a)])),   // three toes
-  part('', new THREE.CylinderGeometry(0.19, 0.4, 0.3, 32), footMat, [0, 0.2, 0.12]),
-  part('', new THREE.CylinderGeometry(0.12, 0.18, 0.3, 24), footMat, [0, 0.48, 0.12]),
+  ...[-0.95, 0, 0.95].map(a => part('', puck(0.45), footMat, [0.72 * Math.sin(a), 0, 0.66 * Math.cos(a)])),   // three toes
+  part('', new THREE.CylinderGeometry(0.36, 0.44, 0.36, 40), footMat, [0, 0.22, 0.12]),   // a thick, short stem
+  part('', new THREE.CylinderGeometry(0.12, 0.18, 0.3, 24), footMat, [0, 0.52, 0.12]),
 );
 
 // ---------- inside: a stylised illustration in general groups, deliberately not the real board ----------
@@ -128,10 +133,10 @@ const inside = [
 ];
 
 const TILES = [C.green, C.yellow, C.blue, C.white, C.purple, C.green, C.yellow, C.blue];
-const eye = x => { const y = TOP - 0.9, r = Math.sqrt(R * R - (y - SHOULDER) ** 2), z = Math.sqrt(r * r - x * x); return part(`eye-${x < 0 ? 'l' : 'r'}`, new THREE.SphereGeometry(0.095, 24, 16), shiny(C.ink), [x, y, z + 0.005], [-0.14, x * 0.9, 0], [1, 1, 0.35]); };
+const eye = x => { const y = TOP - 0.81, r = Math.sqrt(R * R - (y - SHOULDER) ** 2), z = Math.sqrt(r * r - x * x); return part(`eye-${x < 0 ? 'l' : 'r'}`, new THREE.SphereGeometry(0.095, 24, 16), shiny(C.ink), [x, y, z + 0.005], [-0.14, x * 0.9, 0], [1, 1, 0.35]); };
 
 const parts = [
-  ...inside, body, sleeve, foot, eye(-0.32), eye(0.32),
+  ...inside, body, sleeve, foot, eye(-0.305), eye(0.305),
   // The side button, seen through the hole in the sleeve.
   part('button', new THREE.CylinderGeometry(0.16, 0.16, 0.08, 32), toy(C.white, { emissive: C.yellow, emissiveIntensity: 0 }), [R, SB + HOLE.s, 0], [0, 0, FACE]),
   // ---- extras that only appear in some forms ----
@@ -139,11 +144,11 @@ const parts = [
   ...[0, 1, 2].map(i => extra(`arc-${i}`, new THREE.TorusGeometry(1, 0.06 / (0.5 + i * 0.35), 12, 48, PI / 2), glow(C.green), [0, TOP + 0.25, 0], [0, 0, PI / 4])),
   ...TILES.map((c, i) => extra(`tile-${i}`, new RoundedBoxGeometry(0.62, 0.8, 0.1, 4, 0.05), toy(c), [0, 0.3, 0])),
   // Doodles drawn on the face, bent to its curve.
-  extra('doodle-smile', tube([...Array(9)].map((_, i) => { const t = PI + i / 8 * PI; return onFace(0.3 * Math.cos(t), 0.85 + 0.2 * Math.sin(t)); })), toy(C.ink)),
-  extra('doodle-cheek-l', new THREE.CircleGeometry(0.12, 24), toy(0xff8fa8), onFace(-0.55, 0.82), [0, -0.52, 0]),
-  extra('doodle-cheek-r', new THREE.CircleGeometry(0.12, 24), toy(0xff8fa8), onFace(0.55, 0.82), [0, 0.52, 0]),
-  extra('doodle-star', tube([[0, 0.24], [0.14, -0.19], [-0.23, 0.07], [0.23, 0.07], [-0.14, -0.19], [0, 0.24]].map(([x, y]) => onFace(x, y + 0.1))), toy(C.green)),
-  extra('doodle-zig', tube([-0.5, -0.3, -0.1, 0.1, 0.3, 0.5].map((x, i) => onFace(x, -0.6 + (i % 2) * 0.24))), toy(C.purple)),
+  extra('doodle-smile', tube([...Array(9)].map((_, i) => { const t = PI + i / 8 * PI; return onFace(0.3 * Math.cos(t), 0.72 + 0.2 * Math.sin(t)); })), toy(C.ink)),
+  extra('doodle-cheek-l', new THREE.CircleGeometry(0.12, 24), toy(0xff8fa8), onFace(-0.55, 0.68), [0, -0.52, 0]),
+  extra('doodle-cheek-r', new THREE.CircleGeometry(0.12, 24), toy(0xff8fa8), onFace(0.55, 0.68), [0, 0.52, 0]),
+  extra('doodle-star', tube([[0, 0.24], [0.14, -0.19], [-0.23, 0.07], [0.23, 0.07], [-0.14, -0.19], [0, 0.24]].map(([x, y]) => onFace(x, y - 0.05))), toy(C.green)),
+  extra('doodle-zig', tube([-0.5, -0.3, -0.1, 0.1, 0.3, 0.5].map((x, i) => onFace(x, -0.6 + (i % 2) * 0.22))), toy(C.purple)),
 ];
 // Doodles are drawn in place, so each one grows from its own middle.
 parts.filter(p => p.name.startsWith('doodle') && !p.name.includes('cheek')).forEach(p => { p.geometry.computeBoundingBox(); const c = p.geometry.boundingBox.getCenter(new THREE.Vector3()); p.geometry.translate(-c.x, -c.y, -c.z); p.position.copy(c); });
