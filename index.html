@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Meet Jules: the interactive storyteller</title>
+<meta name="description" content="Jules is a voice-interactive storyteller for curious minds aged 4 to 10. Guided voice adventures, with no screen.">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="preload" href="fonts/Macan-Bold.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="site.css">
+<script>document.documentElement.classList.add('js')</script>
+</head>
+<body>
+
+<div class="loader" aria-hidden="true"><img src="logo.svg" alt="" width="138" height="48"><p>Waking Jules <span class="loader__n">000</span></p></div>
+
+<!-- The one 3D object. It is fixed behind everything and never leaves. -->
+<canvas id="stage" aria-hidden="true"></canvas>
+
+<div class="bar">
+  <a class="brand" href="#top"><img src="logo.svg" alt="Jules Stories" width="104" height="36"></a>
+  <nav class="bar__nav"><a href="#meet">What</a><a href="#modes">Modes</a><a href="#inside">Inside</a><a href="#safe">Parents</a><a class="button button--s" href="https://julesstories.com/">Order Jules</a></nav>
+</div>
+<div class="count" aria-hidden="true"><span class="count__n">01</span><span class="count__bar"><i></i></span><span class="count__t">17</span></div>
+
+<header class="hero" id="top" data-shape="whole" data-at="hero" data-bg="#f3e7dd">
+  <h1 class="display">Imagination: on.<br>Screens: off.</h1>
+  <div class="hero__foot">
+    <p class="lead">Jules is a voice-interactive storyteller for curious minds aged 4 to 10.</p>
+    <div class="hero__act"><p class="hint">Grab Jules, or scroll.</p><a class="button" href="#meet">Meet Jules</a></div>
+  </div>
+</header>
+
+<main>
+<section class="seq" id="meet" style="--steps:4" aria-label="What Jules is" data-bg="#f3e7dd">
+  <div class="seq__in">
+    <div class="step" data-shape="face" style="--c:var(--orange)"><h2 class="jh">A storyteller with no screen.</h2><div class="step__b"><p class="lead">Jules listens, talks and guides a child through stories, games and challenges, all by voice.</p><ul class="facts"><li>Ages 4 to 10</li><li>Screen-free</li></ul></div></div>
+    <div class="step" data-shape="press" style="--c:var(--yellow)"><h2 class="jh">Press. Speak. Explore.</h2><div class="step__b"><p class="lead">That is everything a child needs to know. One press, then a conversation.</p><ul class="facts"><li>No scrolling</li><li>No passive content</li></ul></div></div>
+    <div class="step" data-shape="talk" style="--c:var(--orange)"><h2 class="jh">It listens. Then it answers.</h2><div class="step__b"><p class="lead">Responsible voice-to-voice AI makes each session a guided experience: a clear beginning, a playful challenge, a satisfying ending.</p><ul class="facts"><li>Voice to voice</li></ul></div></div>
+    <div class="step" data-shape="draw" style="--c:var(--lilac)"><h2 class="jh">A face you can draw on.</h2><div class="step__b"><p class="lead">The white front is there for pens. Every child gives Jules a face of their own.</p><ul class="facts"><li>Draw here</li></ul></div></div>
+  </div>
+</section>
+
+<section class="opener" id="modes" data-shape="face" data-bg="#e0b4e3">
+  <h2 class="jh" data-rise>One Jules, two modes.</h2>
+  <div class="step__b" data-rise style="--d:1"><p class="lead">Parents personalise the experience through the Jules app.</p></div>
+</section>
+<section class="seq" style="--steps:3" aria-label="The two modes" data-bg="#e0b4e3">
+  <div class="seq__in">
+    <div class="step" data-shape="online" style="--c:var(--green);--ct:#fff"><h2 class="jh">Jules Adventures. Online.</h2><div class="step__b"><p class="lead">Personalised voice adventures of 5 to 10 minutes, age-appropriate and structured.</p><ul class="facts"><li>Stories</li><li>Games</li><li>Challenges</li></ul></div></div>
+    <div class="step" data-shape="explore" style="--c:var(--yellow)"><h2 class="jh">Five worlds to explore.</h2><div class="step__b"><p class="lead">Maths and logical thinking. Curiosity and the world. Creativity and storytelling. Reading and vocabulary. New languages.</p><ul class="facts"><li>French and Spanish in beta</li></ul></div></div>
+    <div class="step" data-shape="anywhere" style="--c:#fff"><h2 class="jh">Jules Anywhere. Offline.</h2><div class="step__b"><p class="lead">A free library of stories and activities that goes wherever Jules goes. For travel, quiet time and bedtime.</p><ul class="facts"><li>Free</li><li>No Wi-Fi required</li></ul></div></div>
+  </div>
+</section>
+
+<section class="seq" id="inside" style="--steps:3" aria-label="Inside Jules" data-bg="#f3e7dd">
+  <div class="seq__in">
+    <div class="step" data-shape="exploded" style="--c:var(--yellow)"><h2 class="jh">Simple outside. Clever inside.</h2><div class="step__b"><p class="lead">Built for kids from the ground up. This is an illustration of how Jules goes together, not an engineering drawing.</p></div></div>
+    <div class="step" data-shape="voice" style="--c:var(--orange)"><h2 class="jh">Made to hear and be heard.</h2><div class="step__b"><p class="lead">A microphone for the child's voice and a speaker for Jules's. The conversation is the whole interface.</p><ul class="facts"><li>Microphone</li><li>Speaker</li></ul></div></div>
+    <div class="step" data-shape="core" style="--c:var(--green);--ct:#fff"><h2 class="jh">Goes where the child goes.</h2><div class="step__b"><p class="lead">A rechargeable battery, Wi-Fi for adventures, and stories on board for when there is none.</p><ul class="facts"><li>Rechargeable</li><li>Wi-Fi</li></ul></div></div>
+  </div>
+</section>
+
+<section class="opener" id="safe" data-shape="safe" data-bg="#b8d8d3">
+  <h2 class="jh" data-rise>Safe, smart, supervised by you.</h2>
+  <div class="step__b" data-rise style="--d:1"><p class="lead">You choose the stories and set the rules. Jules plays inside them.</p></div>
+</section>
+<section class="panel" data-shape="safe" data-at="bg" data-bg="#b8d8d3">
+  <div class="wrap">
+    <dl class="spec" data-rise>
+      <div><dt>You're in charge</dt><dd>Set it up once, then stay in control through the companion app. Full parental control, every step of the way.</dd></div>
+      <div><dt>Designed with teachers</dt><dd>Curriculum-aligned sessions that support literacy, logic and creativity.</dd></div>
+      <div><dt>Privacy-first</dt><dd>Safe, secure and child-friendly, with BrainSafe Certification.</dd></div>
+      <div><dt>Ditch the screens</dt><dd>Stories, riddles and learning without the overstimulation.</dd></div>
+    </dl>
+  </div>
+</section>
+
+<section class="opener" data-shape="lilac" data-bg="#f3e7dd">
+  <h2 class="jh" data-rise>Orange, or lilac.</h2>
+  <div class="step__b" data-rise style="--d:1"><p class="lead">Same Jules, two colours.</p></div>
+</section>
+<section class="panel" data-shape="lilac" data-at="bg" data-bg="#f3e7dd">
+  <div class="wrap">
+    <h2 class="head" data-rise>What they say about Jules</h2>
+    <p class="sub" data-rise>Real experiences from our early testers.</p>
+    <div class="quotes">
+      <figure data-rise><blockquote>We used to default to cartoons after school. Now my 5-year-old son Max reaches for Jules. It's screen-free and I feel great about it.</blockquote><figcaption>Tom, dad of Max (5)</figcaption></figure>
+      <figure data-rise style="--d:1"><blockquote>I want my 8-year-old twins to benefit from AI, but safely. Jules strikes the perfect balance.</blockquote><figcaption>Priya, mum of Ana (8) and Chloe (8)</figcaption></figure>
+      <figure data-rise style="--d:2"><blockquote>I love listening to the stories my kids create with Jules, they have such a great imagination.</blockquote><figcaption>Paula, mum of Arthur (4) and Eva (9)</figcaption></figure>
+      <figure data-rise style="--d:3"><blockquote>At MathsWorld we want to make maths accessible and friendly. With Jules as a friendly guide kids can explore and learn maths.</blockquote><figcaption>Dr. Katie Chicot, CEO MathsWorld UK, Senior Lecturer in Maths &amp; Statistics, The Open University</figcaption></figure>
+    </div>
+  </div>
+</section>
+
+<section class="opener close" id="order" data-shape="whole" data-at="left" data-bg="#f3e7dd">
+  <div class="card" data-rise>
+    <h2 class="head">Childhood: fully switched on.</h2>
+    <p>Guided voice adventures for ages 4 to 10. Price from £169.</p>
+    <a class="button" href="https://julesstories.com/">Gift Jules</a>
+  </div>
+</section>
+</main>
+
+<footer class="foot">© 2026 Story Bug Limited. Jules Stories is the trading name of Story Bug Ltd.</footer>
+
+<script type="importmap">{"imports":{"three":"./vendor/three.module.min.js"}}</script>
+<script src="site.js"></script>
+<script type="module" src="scene.js"></script>
+</body>
+</html>
