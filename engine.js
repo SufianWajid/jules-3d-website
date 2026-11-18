@@ -14,6 +14,7 @@ export const HIDE = 0.001;   // scale for a part that should vanish in a form (0
  *          state fields, all optional (missing = rest pose):
  *            p [x,y,z] absolute position   d [dx,dy,dz] offset from rest   s scale multiplier (HIDE to hide)
  *            r [rx,ry,rz] rotation         c colour   e emissive colour    ei emissive intensity
+ *          turn radians the object is turned about its upright axis in this form (PI shows the back)
  *          spin 0..1 how much the whole object turns by itself in this form (0 = faces the camera)
  *          roll 0..1 in-plane turn, tilt radians of forward lean, light = key light colour
  *   places (at, mobile) -> [x, y, scale, opacity] to override where the object sits for a data-at value
@@ -45,7 +46,7 @@ export function createStage({ canvas, parts, forms, places, bloom = [0.42, 0.55,
     c: mat(p) ? mat(p).color.clone() : new THREE.Color(), e: mat(p) && mat(p).emissive ? mat(p).emissive.clone() : new THREE.Color(0), ei: mat(p) ? mat(p).emissiveIntensity ?? 0 : 0,
   }));
   const compile = f => ({
-    spin: f.spin ?? 1, roll: f.roll ?? 0, tilt: f.tilt ?? 0.38, scan: f.scan ?? 0, light: new THREE.Color(f.light ?? 0xffffff),
+    spin: f.spin ?? 1, roll: f.roll ?? 0, tilt: f.tilt ?? 0.38, turn: f.turn ?? 0, scan: f.scan ?? 0, light: new THREE.Color(f.light ?? 0xffffff),
     b: parts.map((part, i) => {
       const r = rests[i], s = (f.each && f.each(part, i, r)) || {};
       return {
@@ -117,7 +118,7 @@ export function createStage({ canvas, parts, forms, places, bloom = [0.42, 0.55,
       if (mm) { mm.color.lerpColors(p.c, q.c, f); if (mm.emissive) { mm.emissive.lerpColors(p.e, q.e, f); mm.emissiveIntensity = mix(p.ei, q.ei, f); } }
     });
     const spin = mix(A.spin, B.spin, f);
-    group.rotation.set(mix(A.tilt, B.tilt, f) + pitch, wrap(t * 0.22) * spin + yaw, mix(A.roll, B.roll, f) * wrap(t * 0.12));
+    group.rotation.set(mix(A.tilt, B.tilt, f) + pitch, wrap(t * 0.22) * spin + mix(A.turn, B.turn, f) + yaw, mix(A.roll, B.roll, f) * wrap(t * 0.12));
     group.position.set(mix(a.at[0], b.at[0], f), mix(a.at[1], b.at[1], f), 0);
     group.scale.setScalar(mix(a.at[2], b.at[2], f));
     canvas.style.opacity = mix(a.at[3], b.at[3], f).toFixed(3);
