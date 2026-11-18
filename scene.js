@@ -5,7 +5,7 @@ import { createStage, THREE, HIDE } from './engine.js';
 import { RoundedBoxGeometry } from './vendor/RoundedBoxGeometry.js';
 
 // Colours from julesstories.com.
-const C = { orange: 0xff560d, lilac: 0xd7b7e0, green: 0x00735a, yellow: 0xffbf1a, blue: 0x3f81c5, purple: 0x8729ff, white: 0xffffff, ink: 0x141416, key: 0x7f8386, panel: 0xe4e5e8 };
+const C = { orange: 0xff560d, lilac: 0xd7b7e0, green: 0x00735a, yellow: 0xffbf1a, blue: 0x3f81c5, purple: 0x8729ff, white: 0xffffff, ink: 0x141416, key: 0x76797c, panel: 0xe4e5e8 };
 const SHOW = 1 / HIDE;      // extras rest at scale HIDE; a form shows one with s: SHOW
 const PI = Math.PI, FACE = PI / 2;
 const toy = (color, extra = {}) => new THREE.MeshPhysicalMaterial({ color, metalness: 0, roughness: 0.5, clearcoat: 0.25, clearcoatRoughness: 0.4, envMapIntensity: 0.9, ...extra });
@@ -33,7 +33,7 @@ const onFace = (x, y, lift = 0.02) => [x, y, Math.sqrt(R * R - x * x) + lift];
 
 // Openings in the sleeve, in the same (a, s) units: a pill has centre a, half width w, and runs from s0 to s1.
 const BACK = RS * PI;
-const OPEN = { back: { a: BACK, w: 0.45, s0: 0.5, s1: SL - 0.04 } };
+const OPEN = { back: { a: BACK, w: 0.49, s0: 0.55, s1: SL + 0.33 } };   // the panel plus a thin margin
 const HOLE = { a: RS * PI / 2, s: SL - 0.1, r: 0.17 };              // the side button's hole, on the device's left
 const pillPath = (o, k = 30) => {
   const rb = o.rb ?? o.w, c1 = o.s1 - o.w, c0 = o.s0 + rb, pts = [], at = (a, s) => pts.push([o.a + a, s]), f = i => i / k;
@@ -109,17 +109,39 @@ body.add(
   part('', new THREE.TorusGeometry(R + 0.001, 0.007, 8, 120), toy(0xc9cbce), [0, BOTTOM + 0.62, 0], [FACE, 0, 0]),                                          // the seam above the base
   part('', new THREE.SphereGeometry(0.022, 12, 8), toy(C.ink), [-R, BOTTOM + 2.65, 0]),                                                                              // microphone
 );
-// Back controls: a recessed panel with three keys and the charging port.
-const PY = 0.06, KZ = -(R - 0.045);
 const pillShape = (w, h) => { const r = w / 2, y = h / 2 - r, s = new THREE.Shape(); s.moveTo(-r, -y); s.lineTo(-r, y); s.absarc(0, y, r, PI, 0, true); s.lineTo(r, -y); s.absarc(0, -y, r, 0, PI, true); return s; };
 const slab = (w, h, depth, bevel) => new THREE.ExtrudeGeometry(pillShape(w, h), { depth, bevelEnabled: true, bevelSize: bevel, bevelThickness: bevel, bevelSegments: 4, curveSegments: 32 }).center();
-const keyMat = toy(C.key, { roughness: 0.7 });
+// Back controls, measured off straight-on frames: a pale panel from 0.78 below the crown to just above the base
+// seam, 2.76 times as tall as it is wide; a round key, a tall rocker, the USB-C slot with a small light beside it,
+// and a larger round key. Everything is wrapped onto the body's curve so nothing floats or sinks.
+const BACKB = R * PI;                                                 // arc length round to the middle of the back
+const onBody = (a, s, lift = 0) => {                                  // (arc round from the front, arc up from the base) -> point
+  const r = R + lift, SLB = SHOULDER - BOTTOM;
+  if (s <= SLB) { const th = a / R; return [r * Math.sin(th), BOTTOM + s, r * Math.cos(th)]; }
+  const ph = (s - SLB) / R, th = a / R;
+  return [r * Math.cos(ph) * Math.sin(th), SHOULDER + r * Math.sin(ph), r * Math.cos(ph) * Math.cos(th)];
+};
+// A stadium-shaped pad on the body: hw/hh half width and height (arc units), lift off the surface, bulge for a domed key.
+const pad = (a, s, hw, hh, lift, bulge, mat) => {
+  const across = hw > hh, o = across ? { a: 0, w: hh, s0: -hw, s1: hw } : { a: 0, w: hw, s0: -hh, s1: hh };
+  const ring = pillPath(o, 24).map(([x, y]) => across ? [y, x] : [x, y]); if (across) ring.reverse();   // a swap mirrors the winding
+  const N = ring.length, V = 10, pos = [], idx = [];
+  for (let j = 0; j <= V; j++) { const v = j / V, z = lift + bulge * (1 - v ** 6); ring.forEach(([x, y]) => pos.push(...onBody(a + x * v, s + y * v, z))); }
+  for (let j = 0; j < V; j++) for (let i = 0; i < N; i++) { const p = j * N + i, q = j * N + (i + 1) % N; idx.push(p, q + N, q, p, p + N, q + N); }
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setIndex(idx); g.computeVertexNormals();
+  return new THREE.Mesh(g, mat);
+};
+const PANEL = { s: 1.71, hw: 0.41, hh: 1.08 }, ptop = PANEL.s + PANEL.hh;
+const keyMat = toy(C.key, { roughness: 0.7 }), markMat = toy(0x5d6164, { roughness: 0.8 });
+const chevron = (s, dir) => new THREE.Mesh(tube([-0.07, 0, 0.07].map((x, i) => onBody(BACKB + x, s + (i === 1 ? dir * 0.05 : 0), 0.05)), 0.012), markMat);
 body.add(
-  part('', slab(0.78, 1.86, 0.05, 0.02), toy(C.panel, { roughness: 0.35 }), [0, PY, -(R - 0.06)]),
-  part('', slab(0.38, 0.38, 0.05, 0.02), keyMat, [0, PY + 0.62, KZ - 0.03]),
-  part('', slab(0.38, 0.66, 0.05, 0.02), keyMat, [0, PY + 0.06, KZ - 0.03]),
-  part('', slab(0.07, 0.24, 0.03, 0.005), toy(C.ink), [0, PY - 0.37, KZ - 0.02], [0, 0, FACE]),
-  part('', slab(0.38, 0.38, 0.05, 0.02), keyMat, [0, PY - 0.64, KZ - 0.03]),
+  pad(BACKB, PANEL.s, PANEL.hw, PANEL.hh, 0.004, 0, toy(C.panel, { roughness: 0.35 })),
+  pad(BACKB, ptop - 0.34, 0.235, 0.235, 0.006, 0.05, keyMat),            // round key
+  pad(BACKB, ptop - 1.0, 0.27, 0.39, 0.006, 0.05, keyMat),           // rocker
+  chevron(ptop - 0.8, 1), chevron(ptop - 1.2, -1),
+  pad(BACKB, ptop - 1.5, 0.16, 0.045, 0.006, 0, toy(0x2a2b2e)),       // USB-C
+  pad(BACKB + 0.27, ptop - 1.6, 0.022, 0.022, 0.006, 0, toy(C.ink)),  // small light
+  pad(BACKB, ptop - 1.87, 0.25, 0.25, 0.006, 0.05, keyMat),            // larger round key
 );
 
 // ---------- the foot: a stem that plugs into the base and a flat sole with two toes ----------
