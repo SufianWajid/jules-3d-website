@@ -20,7 +20,7 @@ const R = 1.05, BOTTOM = -1.67, TOP = 2.15, SHOULDER = TOP - R;      // body rad
 const RS = R + 0.06, SB = BOTTOM + 0.02;                            // sleeve radius and its lower edge: it stops at the base, never below it
 const SL = SHOULDER - SB, ARC = SL + RS * PI / 2;                    // sleeve: straight length, then the dome's arc
 // A point on the sleeve from (a = distance round from the front, s = distance up from its lower edge).
-const SKIRT = 0.05, SKIRT_H = 1.5;                                    // the sleeve flares out a little towards its lower edge
+const SKIRT = 0, SKIRT_H = 1.5;                                       // no flare: seen side-on, the sleeve runs straight down to the base
 const onSleeve = (a, s, lift = 0) => {
   const th = a / RS; let r = RS + lift;
   if (s < SKIRT_H) r += SKIRT * (1 - s / SKIRT_H) ** 2;
@@ -33,8 +33,7 @@ const onFace = (x, y, lift = 0.02) => [x, y, Math.sqrt(R * R - x * x) + lift];
 
 // Openings in the sleeve, in the same (a, s) units: a pill has centre a, half width w, and runs from s0 to s1.
 const BACK = RS * PI;
-// rb is the radius of the two lower corners (the face opening has a wide, flat-bottomed U; the back one is a full pill).
-const OPEN = { face: { a: 0, w: 1.12, s0: 0.74, s1: SL + 1.35, rb: 0.7 }, back: { a: BACK, w: 0.45, s0: 0.72, s1: SL - 0.04 } };
+const OPEN = { back: { a: BACK, w: 0.45, s0: 0.72, s1: SL - 0.04 } };
 const HOLE = { a: RS * PI / 2, s: SL - 0.1, r: 0.17 };              // the side button's hole, on the device's left
 const pillPath = (o, k = 30) => {
   const rb = o.rb ?? o.w, c1 = o.s1 - o.w, c0 = o.s0 + rb, pts = [], at = (a, s) => pts.push([o.a + a, s]), f = i => i / k;
@@ -48,13 +47,29 @@ const pillPath = (o, k = 30) => {
 };
 
 // ---------- the sleeve: a surface of revolution with the openings cut by an alpha mask ----------
+// The face opening is drawn as it looks from the front, then laid onto the sleeve: an arch that follows the
+// curve of the head with a thin rim above it, straight sides, and a wide U underneath.
+const FACE_OPEN = { x: 0.94, rim: 0.08, bottom: 0.74, u: 0.68 };     // half width, rim over the crown, height of the lower edge, depth of the U
+const fromFront = (x, y) => {                                         // front-view point -> (a, s) on the sleeve
+  if (y <= SHOULDER) return [Math.asin(x / RS) * RS, y - SB];
+  const ph = Math.asin(Math.min(1, (y - SHOULDER) / RS));
+  return [Math.asin(Math.max(-1, Math.min(1, x / (RS * Math.cos(ph))))) * RS, SL + ph * RS];
+};
+const facePath = (k = 48) => {
+  const { x: w, rim, bottom, u } = FACE_OPEN, yc = SHOULDER + RS - rim - w, y0 = SB + bottom + u, pts = [];
+  for (let i = 0; i < k; i++) pts.push([w, y0 + (yc - y0) * i / k]);                                        // right side, going up
+  for (let i = 0; i < k * 2; i++) { const a = i / (k * 2) * PI; pts.push([w * Math.cos(a), yc + w * Math.sin(a)]); }   // the arch over the head
+  for (let i = 0; i < k; i++) pts.push([-w, yc - (yc - y0) * i / k]);                                       // left side, going down
+  for (let i = 0; i < k * 2; i++) { const a = PI + i / (k * 2) * PI; pts.push([w * Math.cos(a), y0 + u * Math.sin(a)]); }   // the U underneath
+  return pts.map(([x, y]) => fromFront(x, y));
+};
 const sleeveMask = () => {
   const W = 2048, H = 1536, k = document.createElement('canvas'); k.width = W; k.height = H;
   const g = k.getContext('2d'), sx = W / (RS * PI * 2), sy = H / ARC;
   const X = a => (a + RS * PI) * sx, Yc = s => H - s * sy;          // a = 0 (front) sits mid-canvas; s runs upward
   g.fillStyle = '#fff'; g.fillRect(0, 0, W, H); g.fillStyle = '#000';
-  const cut = o => { g.beginPath(); pillPath(o).forEach(([a, s], i) => g[i ? 'lineTo' : 'moveTo'](X(a), Yc(s))); g.fill(); };
-  cut(OPEN.face); cut(OPEN.back); cut({ ...OPEN.back, a: -BACK });   // the back opening straddles the seam, so draw it at both ends
+  const cut = path => { g.beginPath(); path.forEach(([a, s], i) => g[i ? 'lineTo' : 'moveTo'](X(a), Yc(s))); g.fill(); };
+  cut(facePath()); cut(pillPath(OPEN.back)); cut(pillPath({ ...OPEN.back, a: -BACK }));   // the back opening straddles the seam, so draw it at both ends
   g.beginPath(); g.ellipse(X(HOLE.a), Yc(HOLE.s), HOLE.r * sx, HOLE.r * sy, 0, 0, PI * 2); g.fill();
   const t = new THREE.CanvasTexture(k); t.anisotropy = 8; return t;
 };
@@ -70,11 +85,11 @@ const lipMat = toy(C.orange, SOFT); lipMat.color = sleeveMat.color;       // one
 const sleeve = part('sleeve', sleeveGeo(), sleeveMat);
 // Rounded lips give the cut edges their thickness; a rim finishes the lower edge; a ridge runs down each side.
 sleeve.add(
-  new THREE.Mesh(tube(pillPath(OPEN.face).map(([a, s]) => onSleeve(a, s)), 0.05, true), lipMat),
+  new THREE.Mesh(tube(facePath().map(([a, s]) => onSleeve(a, s)), 0.05, true), lipMat),
   new THREE.Mesh(tube(pillPath(OPEN.back).map(([a, s]) => onSleeve(a, s)), 0.04, true), lipMat),
   new THREE.Mesh(tube([...Array(40)].map((_, i) => onSleeve(HOLE.a + HOLE.r * Math.cos(i / 40 * PI * 2), HOLE.s + HOLE.r * Math.sin(i / 40 * PI * 2))), 0.03, true), lipMat),
   new THREE.Mesh(tube([...Array(40)].map((_, i) => onSleeve(-HOLE.a + HOLE.r * Math.cos(i / 40 * PI * 2), HOLE.s + HOLE.r * Math.sin(i / 40 * PI * 2))), 0.03, true), lipMat),
-  part('', new THREE.TorusGeometry(RS + SKIRT, 0.04, 16, 120), lipMat, [0, SB + 0.04, 0], [FACE, 0, 0]),
+  part('', new THREE.TorusGeometry(RS - 0.012, 0.03, 16, 120), lipMat, [0, SB + 0.03, 0], [FACE, 0, 0]),
   ...[1, -1].map(side => new THREE.Mesh(tube([0, 1, 2, 3].map(i => onSleeve(side * HOLE.a, 0.6 + i * 0.3, 0.015)), 0.05), lipMat)),
 );
 
